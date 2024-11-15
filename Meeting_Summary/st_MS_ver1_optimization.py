@@ -28,7 +28,7 @@ if uploaded_file:  # 파일이 업로드된 경우
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio:
                 if uploaded_file.name.split(".")[-1] != "wav":
-                    # 파일이 WAV 형식이 아닌 경우, WAV로 변환
+                    # 파일이 WAV 형식이 아닌 경우, WAV로 변환(mp3,mp4를 작은크기로 변경)
                     audio = AudioSegment.from_file(uploaded_file)
                     audio.export(temp_audio.name, format="wav")
                 else:

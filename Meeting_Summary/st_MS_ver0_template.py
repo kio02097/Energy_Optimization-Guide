@@ -6,7 +6,7 @@ import whisper
 @st.cache_resource
 def load_whisper_model():
     return whisper.load_model("base")  # Whisper 모델의 "base" 버전 로드
-
+# 네이버 클로버가 좋은 것 같음: 한국어 특화형이라서 더 잘 인식을 함 맥락은 chatgpt가 훨씬 좋음
 # Whisper 모델 초기화
 whisper_model = load_whisper_model()
 

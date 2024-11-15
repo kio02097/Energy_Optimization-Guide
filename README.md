@@ -79,6 +79,7 @@ streamlit run Energy_Optimization/st_EO_ver2_dashboard.py
 streamlit run Energy_Optimization/st_EO_ver3_Analysis_RAG.py
 ## 문서 RAG 연동 추가: 
 streamlit run Energy_Optimization/st_EO_ver4_Docs_RAG.py
+문서연동을 해서 연관되어서 이야기를 함 
 ## 자동 리포팅 생성 기능 추가
 streamlit run Energy_Optimization/st_EO_ver5_Reporting.py
 ## 강의 실습
@@ -87,7 +88,7 @@ streamlit run Energy_Optimization/st_EO_ver5_Reporting.py
 ex: 상관관계 분석, 에너지사용량 분포 box plot, scatter plot 등
 3. 세부 데이터 정보를 벡터스토어로 구축하고 RAG 추가 연동
 4. 위의 기능 추가 예시를 참고하여 나만의 서비스 커스텀해서 만들기, 위 내용은 프로젝트 문서에 내용으로 정리, 추후 개발하고 싶은 기능도 3가지 정도 제시
-
+streamlit run Energy_Optimization/st_EO_ver6_Reporting.py
 
 # Meeting Summary
 ## 기본 템플릿 제작: 음성 파일 업로드 및 텍스트 변환
@@ -98,8 +99,12 @@ streamlit run Meeting_Summary/st_MS_ver1_optimization.py
 streamlit run Meeting_Summary/st_MS_ver2_summary.py
 ## 프롬프트 엔지니어링: 회의록 요약문 구조화
 streamlit run Meeting_Summary/st_MS_ver3_Prompt.py
+# desktop에서 원활하나 노트북에서는 잘 작동이 안되는경우도 있음, 모델이 cpu 형태이기 때문에 느림 gpu로 바꿔서 만들기
+# 구조를 prompt를 잘 정해줘야지 요약이 잘됨 
+
 ## 강의 실습
 1. 소스 코드의 프롬프트 엔지니어링 수행 및, 헤더, 타이틀 등 텍스트나 레이아웃 등 전반적인 서비스 커스텀 및 보완 수행
+회의록 만들기 버튼 만들기, 사이드바에 스타일 선택, 구체화시키기 
 2. 회의록의 더욱 유용한 활용을 위한 추가 프롬프트 엔지니어링 작업
 3. 회의록 작성의 스타일을 정의할 수 있는 다양한 부가기능 개발
 4. 회의 세부 내용에 대해서 답변할 수 있는 챗봇 서비스 추가
@@ -133,7 +138,9 @@ https://docs.streamlit.io/deploy/streamlit-community-cloud/get-started/quickstar
 streamlit run custom_chatbot/st_chatbot_ver4_RAG2.py
 ## 아래 URL에서 앱 setting에서 secre_key 등록
 https://share.streamlit.io/
-## test2
+% 도커 빌드 이슈로 컨테이너 환경 통합은 어려움. 로컬 가상환경에서 바로 통합하는 방식이 유리함
+% 빌드할 때 코드 스페이스를 활용하여 배포 가능
+## test
 streamlit run Energy_Optimization/st_EO_ver5_Reporting.py
 
 

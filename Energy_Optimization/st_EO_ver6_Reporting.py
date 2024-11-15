@@ -1,3 +1,5 @@
+# 상관관계 분석, box plot 및 scatter plot 추가
+
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -7,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager, rc
 import os
 from langchain_openai import ChatOpenAI
+from langchain.document_loaders import PyPDFLoader
 
 # LangChain과 OpenAI API 임포트
 from langchain import PromptTemplate
@@ -90,6 +93,51 @@ pivot_table = pivot_data.pivot_table(index='hour', columns='day', values='Applia
 sns.heatmap(pivot_table, cmap="YlGnBu", ax=ax)
 st.pyplot(fig)
 
+# --- 상관관계 분석 시작 ---
+st.markdown("---")
+st.header("📊 에너지 사용량 상관관계 분석")
+
+# 상관관계 계산
+data_correlation = filtered_data.corr()
+fig_corr, ax_corr = plt.subplots(figsize=(10, 6))
+sns.heatmap(data_correlation, annot=True, cmap="coolwarm", ax=ax_corr)
+ax_corr.set_title("에너지 사용량 관련 변수 상관관계")
+st.pyplot(fig_corr)
+
+# 상관관계 값이 0.5 이상인 변수 정리
+high_corr_pairs = data_correlation[(data_correlation >= 0.5) & (data_correlation < 1.0)].stack().reset_index()
+high_corr_pairs.columns = ['변수1', '변수2', '상관계수']
+high_corr_pairs = high_corr_pairs[high_corr_pairs['변수1'] < high_corr_pairs['변수2']]
+
+st.subheader("📊 상관계수 0.5 이상인 변수 쌍")
+st.dataframe(high_corr_pairs)
+# --- 상관관계 분석 끝 ---
+
+# --- Box Plot 시작 ---
+st.markdown("---")
+st.header("🧶 에너지 사용량 분포 분석 (Box Plot)")
+
+# 에너지 사용량 분포 box plot
+fig_box, ax_box = plt.subplots(figsize=(10, 6))
+sns.boxplot(data=filtered_data, y='Appliances', ax=ax_box, color='skyblue')
+ax_box.set_ylabel("에너지 사용량 (Wh)")
+ax_box.set_title("에너지 사용량 분포 Box Plot")
+st.pyplot(fig_box)
+# --- Box Plot 끝 ---
+
+# --- Scatter Plot 시작 ---
+st.markdown("---")
+st.header("⚡ 에너지 사용량과 기온 간의 산점도 (Scatter Plot)")
+
+# 에너지 사용량과 기온 간의 scatter plot
+fig_scat, ax_scat = plt.subplots(figsize=(10, 6))
+ax_scat.scatter(filtered_data['T1'], filtered_data['Appliances'], alpha=0.5)
+ax_scat.set_xlabel("기온 (°C)")
+ax_scat.set_ylabel("에너지 사용량 (Wh)")
+ax_scat.set_title("에너지 사용량과 기온 간의 관계 (Scatter Plot)")
+st.pyplot(fig_scat)
+# --- Scatter Plot 끝 ---
+
 # --- RAG 기능 추가 부분 시작 ---
 st.markdown("---")
 st.header("📊 데이터 분석 리포트")
@@ -139,37 +187,110 @@ analysis_summary = generate_analysis_summary(filtered_data)
 graph_summary = generate_graph_summary(filtered_data)
 
 # 벡터 스토어에 저장할 문서 생성
-documents = [analysis_summary, graph_summary]
+data_docs = [analysis_summary, graph_summary]
 
 # 임베딩 생성 및 벡터 스토어 구축
 embeddings = OpenAIEmbeddings()
-vectorstore = FAISS.from_texts(documents, embeddings)
+data_vectorstore = FAISS.from_texts(data_docs, embeddings)
+
+# 세부 데이터 정보를 벡터 스토어로 구축
+detail_docs = []
+for index, row in filtered_data.iterrows():
+    detail_summary = f"날짜: {index.strftime('%Y-%m-%d %H:%M:%S')}, 에너지 사용량: {row['Appliances']}Wh, 기온: {row['T1']}°C"
+    detail_docs.append(detail_summary)
+
+# 세부 데이터 벡터 스토어 구축
+detail_vectorstore = FAISS.from_texts(detail_docs, embeddings)
+
+# 사전에 정의된 문서 경로 목록
+document_paths = ["Energy_Optimization/docs/data_description.pdf", 
+                "Energy_Optimization/docs/optimization_paper.pdf"] # 여기서 경로를 설정하여 백엔드에서 문서를 가져옴
+all_documents = []
+for path in document_paths:
+    if os.path.exists(path):
+        loader = PyPDFLoader(path)
+        data = loader.load()
+        all_documents.extend(data)
+
+doc_vectorstore = FAISS.from_documents(all_documents, embeddings)
 
 # LLM 설정
 llm = ChatOpenAI(temperature=0.7, model='gpt-4o-mini')
 
+# 종합 에너지 사용량 분석 리포트 생성
+st.subheader("🗄 종합 에너지 사용량 분석 리포트")
+
+# 문서에서 관련 내용 검색
+query = "에너지 사용량 분석 보고서"
+docs = doc_vectorstore.similarity_search(query, k=2)
+doc_texts = "\n".join([doc.page_content for doc in docs])
+
+# 프롬프트 템플릿 설정
+prompt_template = PromptTemplate(
+    input_variables=["analysis_summaries", "document_texts"],
+    template="""
+    당신은 에너지 데이터 분석 전문가입니다.
+    아래는 에너지 데이터 분석 결과 요약입니다:
+
+    {analysis_summaries}
+
+    아래는 관련 문서들입니다:
+
+    {document_texts}
+
+    위의 내용을 바탕으로, 에너지 사용량에 대한 종합적인 분석 리포트를 작성해주세요.
+    리포트에는 에너지 사용 추이, 패턴, 인사이트, 그리고 데이터를 기반으로 한 추천 사항을 포함해주세요.
+    """
+)
+
+prompt = prompt_template.format(
+    analysis_summaries=analysis_summary + "\n" + graph_summary,
+    document_texts=doc_texts
+)
+
+# 리포트 생성
+report = llm.predict(prompt)
+st.write(report)
+
 # 사용자 질문 입력
-st.subheader("데이터에 대한 질문을 해보세요:")
+st.subheader("리포팅 서비스 관련 추가 질문:")
 user_question = st.text_input("질문을 입력하세요", placeholder="예: 이번 기간 동안 에너지 사용 패턴은 어떠했나요?")
 
 if user_question:
-    # 유사한 문서 검색
-    docs = vectorstore.similarity_search(user_question)
+    # 유사한 문서(데이터 분석 결과) 검색
+    docs = data_vectorstore.similarity_search(user_question)
     relevant_doc = docs[0]
+
+    # 유사한 세부 데이터 검색
+    detail_docs = detail_vectorstore.similarity_search(user_question, k=1)
+    relevant_detail = detail_docs[0]
+
+    # 유사한 문서(참고 문서) 검색
+    docs2 = doc_vectorstore.similarity_search(user_question)
+    relevant_doc2 = docs2[0]
+
     # LLM을 사용하여 답변 생성
     prompt_template = PromptTemplate(
-        input_variables=["context", "question"],
+        input_variables=["context", "detail", "context2", "question"],
         template="""
         아래는 에너지 데이터 분석 결과입니다:
 
         {context}
+        
+        아래는 세부 데이터 정보입니다:
+
+        {detail}
+        
+        아래는 관련 문서 정보입니다:
+
+        {context2}
 
         질문: {question}
 
         위의 내용을 바탕으로 질문에 대한 답변을 작성해주세요.
         """
     )
-    prompt = prompt_template.format(context=relevant_doc, question=user_question)
+    prompt = prompt_template.format(context=relevant_doc, detail=relevant_detail, context2=relevant_doc2, question=user_question)
     answer = llm.predict(prompt)
     st.write("**답변:**")
     st.write(answer)
